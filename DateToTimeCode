@@ -1,0 +1,114 @@
+# INTRODUCTION
+#
+# hello i made this because i struggled to find a program that can do this on the internet for free
+# and so i made this
+
+
+# FUNCTIONS
+#
+# can convert 'Date Modified'/'Date Created' metadata into Timecode for DaVinci
+# can also test/preview changes, then execute changes
+#
+# using the datetime.timedelta in python, we can set an offset if needed
+# https://www.geeksforgeeks.org/python-datetime-timedelta-function/
+# so if your hours are off because of a timezone, then it would be helpful to use this function
+#
+# of course, this is not a solution to perfectly lining up your clips if using different cameras or angles
+# but it will immensely help put cameras and angles in order on a timeline
+# then you can sync every clip manually with the audio or scene
+# this had saved me so much time for over 30 hours worth of footage, with multiple clips and cameras when i had no Timecode synchronizer
+#
+# DaVinci is pretty nice to make an API, too, so thanks, DaVinci Resolve
+
+
+# WHAT IT AFFECTS
+#
+# this only affects every clip in your folder that is opened in your media pool; to target specific files, place them in another folder
+# it is wise to backup your projects, but it has worked perfectly for me
+
+
+# DIRECTIONS
+#
+# select the folder you want to convert in the mediapool
+# using this in the DaVinci console, you click on Py3
+# be sure to read the options guide and edit the options
+# to execute changes change examples = True --> examples = False 
+# then copy everything and paste it into the console
+
+
+
+
+# OPTIONS GUIDE
+#
+# **example**
+# changes aren't final; they are tested
+# you can execute changes by changing
+# examples = True --> examples = False
+#
+# **offset**
+# if my camera is 5 minutes ahead of natural time, then I would...
+# ex. "offset = timedelta(days=0, seconds=0, microseconds=0, milliseconds=0, minutes=5, hours=0, weeks=0)"
+# so then the time and date would go from
+# 12:50 PM to 12:55 PM negative values work too!
+#
+# **subDuration**
+# when Sony cameras end a clip, the creation date or modified date is made when it is ended
+# by subtracting the clip's duration, we can change the clip's date from the end of the clip
+# to the beginning
+# ex. Sony camera started recording at 5:00 PM for 5 minutes.
+# it says that the date modified is now 5:05 PM, with subDuration now it is 5:00 PM.
+# but it can be compensated by enabling subDuration
+
+
+# OPTIONS
+example = True
+offset = timedelta(days=0, seconds=0, microseconds=0, milliseconds=0, minutes=0, hours=0, weeks=0)
+subDuration = True
+
+
+
+# heres the real deal now :)
+
+currentProject = resolve.GetProjectManager().GetCurrentProject()
+# pulls what the current project is
+
+mediaPool = currentProject.GetMediaPool()
+# pulls what is in the current mediapool
+
+currentFolder = mediaPool.GetCurrentFolder()
+# pulls what the current bin is
+
+clipLists = currentFolder.GetClipList()
+# pulls what the current clips are
+# this now allows the recalling of clips from your selected bin/folder
+for clipList in clipLists:
+    try:
+	    # depending on your camera and file, "Date Modified" or "Date Created"
+	    # will be closest to your timeline
+	    # so change (clipList.GetClipProperty('Date Modified')
+	    # if you want to use Date Created instead
+	    #(clipList.GetClipProperty('Date Created'), %a %b %d %Y %H:%M:%S")
+		
+        dateCreation = datetime.strptime(clipList.GetClipProperty('Date Modified'), "%a %b %d %H:%M:%S %Y")
+	    #if your pc uses a different format, you may change it accordingly
+	    
+        if subDuration:
+	        duration = datetime.strptime(clipList.GetClipProperty('Duration'), '%H:%M:%S;%f')
+	        discriminant = timedelta(hours=duration.hour, minutes=duration.minute, seconds=duration.second)
+	        dateCreation = dateCreation-discriminant
+	        dateCreation = dateCreation+offset
+	        
+        print(clipList.GetClipProperty('File Name')+' Start TC = '+clipList.GetClipProperty('Start TC')+' into '+dateCreation.strftime("%H:%M:%S:00"))
+		
+        if example == False: 
+        #if you like the changes, it will execute. do not change the value in the line above
+            clipList.SetClipProperty('Start TC', dateCreation.strftime("%H:%M:%S:00"))
+    except ValueError as err: 
+        print(clipList.GetClipProperty('File Name')+' was skipped for format, null creation date')
+        print(' or date modified.. please check line 80 for direction')
+        print('\t'+format(err))
+		
+    # perhaps the format in duration is wrong; then change 
+    # (clipList.GetClipProperty('Duration'), '%H:%M:%S;%f')
+    # to (clipList.GetClipProperty('Duration'), '%H:%M:%S:%f') 
+    # the difference is the semicolon to the colon

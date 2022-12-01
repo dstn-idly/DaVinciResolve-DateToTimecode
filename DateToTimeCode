@@ -105,7 +105,7 @@ for clipList in clipLists:
             clipList.SetClipProperty('Start TC', dateCreation.strftime("%H:%M:%S:00"))
     except ValueError as err: 
         print(clipList.GetClipProperty('File Name')+' was skipped for format, null creation date')
-        print(' or date modified.. please check line 80 for direction')
+        print(' or date modified.. please check line 111 for direction')
         print('\t'+format(err))
 		
     # perhaps the format in duration is wrong; then change 
